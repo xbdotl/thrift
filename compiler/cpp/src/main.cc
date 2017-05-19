@@ -654,6 +654,13 @@ void version() {
  */
 void usage() {
   fprintf(stderr, "Usage: thrift [options] file\n\n");
+  fprintf(stderr, "/**\n");
+  fprintf(stderr, " * This is a customized version of thrift to support golang sorted map\n");
+  fprintf(stderr, " * The upstream version is 0.9.3\n");
+  fprintf(stderr, " * \n");
+  fprintf(stderr, " * Source code : https://github.com/xbdotl/thrift/tree/0.9.3-golang-sorted-map\n");
+  fprintf(stderr, " * Maintainer  : xbdotl\n");
+  fprintf(stderr, " */\n\n");
   fprintf(stderr, "Use thrift -help for a list of options\n");
   exit(1);
 }
@@ -663,6 +670,13 @@ void usage() {
  */
 void help() {
   fprintf(stderr, "Usage: thrift [options] file\n");
+  fprintf(stderr, "/**\n");
+  fprintf(stderr, " * This is a customized version of thrift to support golang sorted map\n");
+  fprintf(stderr, " * The upstream version is 0.9.3\n");
+  fprintf(stderr, " * \n");
+  fprintf(stderr, " * Source code : https://github.com/xbdotl/thrift/tree/0.9.3-golang-sorted-map\n");
+  fprintf(stderr, " * Maintainer  : xbdotl\n");
+  fprintf(stderr, " */\n\n");
   fprintf(stderr, "Options:\n");
   fprintf(stderr, "  -version    Print the compiler version\n");
   fprintf(stderr, "  -o dir      Set the output directory for gen-* packages\n");

@@ -268,6 +268,9 @@ public:
   std::string type_to_go_key_type(t_type* ttype);
   std::string type_to_spec_args(t_type* ttype);
 
+  std::string go_get_map_key_type(t_map* tmap);
+  std::string go_get_sort_method(std::string const& key_type);
+
   static std::string get_real_go_module(const t_program* program) {
 
     if (!package_flag.empty()) {
@@ -830,6 +833,7 @@ string t_go_generator::go_imports_begin() {
       "import (\n"
       "\t\"bytes\"\n"
       "\t\"fmt\"\n"
+      "\t\"sort\"\n"
       "\t\"" + gen_thrift_import_ + "\"\n");
 }
 
@@ -845,7 +849,8 @@ string t_go_generator::go_imports_end() {
       "// (needed to ensure safety because of naive import list construction.)\n"
       "var _ = thrift.ZERO\n"
       "var _ = fmt.Printf\n"
-      "var _ = bytes.Equal\n\n");
+      "var _ = bytes.Equal\n"
+      "var _ = sort.Sort\n\n");
 }
 
 /**
@@ -3128,9 +3133,20 @@ void t_go_generator::generate_serialize_container(ofstream& out,
 
   if (ttype->is_map()) {
     t_map* tmap = (t_map*)ttype;
-    out << indent() << "for k, v := range " << prefix << " {" << endl;
+
+    const string &key_type = go_get_map_key_type(tmap);
+    const string sort_method = go_get_sort_method(key_type);
+
+    out << indent() << "for _, k := range func() []" << key_type << " {" << endl;
+    out << indent() << "	var keys []" << key_type << " " << endl;
+    out << indent() << "	for k := range " << prefix << " {" << endl;
+    out << indent() << "		keys = append(keys, k)" << endl;
+    out << indent() << "	}" << endl;
+    out << indent() << "	sort." << sort_method << "(keys)" << endl;
+    out << indent() << "	return keys" << endl;
+    out << indent() << "}() {" << endl;
     indent_up();
-    generate_serialize_map_element(out, tmap, "k", "v");
+    generate_serialize_map_element(out, tmap, "k", prefix + "[k]");
     indent_down();
     indent(out) << "}" << endl;
   } else if (ttype->is_set()) {
@@ -3559,6 +3575,58 @@ string t_go_generator::type_to_spec_args(t_type* ttype) {
   }
 
   throw "INVALID TYPE IN type_to_spec_args: " + ttype->get_name();
+}
+
+string t_go_generator::go_get_map_key_type(t_map* tmap) {
+
+  t_field kfield(tmap->get_key_type(), "");
+  kfield.set_req(t_field::T_OPT_IN_REQ_OUT);
+
+  t_type* type = get_true_type(kfield.get_type());
+  string name(publicize(kfield.get_name()));
+
+  if (type->is_base_type()) {
+
+    t_base_type::t_base tbase = ((t_base_type*)type)->get_base();
+
+    switch (tbase) {
+    case t_base_type::TYPE_VOID:
+      throw "compiler error: cannot serialize void field in a struct: " + name;
+      break;
+    case t_base_type::TYPE_STRING:
+      return "string";
+    case t_base_type::TYPE_BYTE:
+      return "int8";
+    case t_base_type::TYPE_I16:
+      return "int16";
+    case t_base_type::TYPE_I32:
+      return "int32";
+    case t_base_type::TYPE_I64:
+      return "int64";
+    case t_base_type::TYPE_DOUBLE:
+      return "float64";
+
+    default:
+      throw "compiler error: no Go name for base type " + t_base_type::t_base_name(tbase);
+    }
+  }
+
+  throw "compiler error: Invalid type in go_get_map_key_type '" + type->get_name()
+      + "' for field '" + name + "'";
+}
+
+string t_go_generator::go_get_sort_method(std::string const& key_type) {
+  if (key_type == "string") return "Strings";
+
+  if (key_type == "int8"
+    || key_type == "int16"
+    || key_type == "int32"
+    || key_type == "int64"
+  ) return "Ints";
+
+  if (key_type == "float64") return "Float64";
+
+  throw "compiler error: Invalid type in go_get_sort_method '" + key_type;
 }
 
 bool format_go_output(const string& file_path) {
